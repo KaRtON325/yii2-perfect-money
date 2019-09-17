@@ -27,6 +27,9 @@ class Api extends \yii\base\Component
     /** @var string Merchant name to display in payment form */
     public $merchantName;
 
+    public $created_at;
+    public $id;
+
     protected $hash;
 
     public $resultUrl;
@@ -98,12 +101,40 @@ class Api extends \yii\base\Component
         if ($queryResult === false)
             return false;
 
-        if (!preg_match_all("/<input name='(.*)' type='hidden' value='(.*)'>/", $queryResult, $items, PREG_SET_ORDER))
-            return false;
+        if ($script == "historycsv") {
+            $historycsv = [];
+            if (($handle = fopen($scriptUrl, "r")) !== FALSE) {
+                while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
+                    $historycsv[] = $data;
+                }
+                fclose($handle);
+            }
 
-        $result = [];
-        foreach ($items as $item)
-            $result[$item[1]] = $item[2];
+            $col_names = $historycsv[0];
+            unset($historycsv[0]);
+            foreach ($historycsv as $row) {
+                $row_data = [];
+                $last_column = 0;
+                foreach ($row as $index => $col) {
+                    if (isset($col_names[$index])) {
+                        $last_column = $col_names[$index];
+                        $row_data[$col_names[$index]] = $col;
+                    } else {
+                        $row_data[$last_column] .= $col;
+                    }
+                }
+                $history[] = $row_data;
+            }
+
+            return $history;
+        } else {
+            if (!preg_match_all("/<input name='(.*)' type='hidden' value='(.*)'>/", $queryResult, $items, PREG_SET_ORDER))
+                return FALSE;
+
+            $result = [];
+            foreach ($items as $item)
+                $result[$item[1]] = $item[2];
+        }
 
         return $result;
     }
@@ -116,6 +147,16 @@ class Api extends \yii\base\Component
     public function balance()
     {
         return $this->call('balance');
+    }
+    
+    /**
+     * Get account wallet balance
+     *
+     * @return array|bool
+     */
+    public function history($params)
+    {
+        return $this->call('historycsv', $params);
     }
 
     /**
