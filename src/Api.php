@@ -27,9 +27,6 @@ class Api extends \yii\base\Component
     /** @var string Merchant name to display in payment form */
     public $merchantName;
 
-    public $created_at;
-    public $id;
-
     protected $hash;
 
     public $resultUrl;
